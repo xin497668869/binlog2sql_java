@@ -1,5 +1,6 @@
 package com.seewo.binlog2sql;
 
+import com.seewo.vo.DbInfoVo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,11 +20,6 @@ import java.util.Map;
  */
 public class TableTool {
 
-    public static final String ip = "localhost";
-    public static final String dbName = "seewo_remote";
-    public static final String url = "jdbc:mysql://" + ip + ":3306/" + dbName + "?characterEncoding=UTF-8&autoReconnect=true&useSSL=true&serverTimezone=UTC";
-    public static final String username = "root";
-    public static final String password = "root";
 
     public static final Logger LOGGER = LoggerFactory.getLogger(TableTool.class);
 
@@ -37,12 +33,13 @@ public class TableTool {
     }
 
 
-
-    public static void setTableInfo(String dbName, Long tableId, String tableName) {
+    public static void setTableInfo(DbInfoVo dbInfoVo, String dbName, Long tableId, String tableName) {
         if (tableInfoMap.containsKey(tableId)) {
             return;
         }
-        try (Connection connection = DriverManager.getConnection(url, username, password)) {
+        String url = "jdbc:mysql://" + dbInfoVo.getHost() + ":" + dbInfoVo.getPort() + "/" + dbName + "?characterEncoding=UTF-8&autoReconnect=true";
+
+        try (Connection connection = DriverManager.getConnection(url, dbInfoVo.getUsername(), dbInfoVo.getPassword())) {
             DatabaseMetaData metaData = connection.getMetaData();
             ResultSet columns = metaData.getColumns(dbName, null, tableName, null);
             Table table = new Table(dbName, tableName);
@@ -59,7 +56,6 @@ public class TableTool {
             throw new RuntimeException(e);
         }
     }
-
 
 
 }

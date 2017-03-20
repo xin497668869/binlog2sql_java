@@ -38,6 +38,18 @@ public class SqlGenerateTool {
 
     public static SimpleDateFormat formatTimestamp = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
 
+    private static String getUpdateSetCondition(Table tableInfo, Row row) {
+        List<String> whereCondition = new ArrayList<>();
+
+        for (int i = 0; i < row.getColumns().size(); i++) {
+            String item = String.format("`%s` = %s", tableInfo.getColumns().get(i), getStringByColumnValue(row.getColumns().get(i)));
+            if (item != null) {
+                whereCondition.add(item);
+            }
+        }
+        return whereCondition.stream().collect(Collectors.joining(" , "));
+    }
+
     private static String getCondition(Table tableInfo, Row row) {
         List<String> whereCondition = new ArrayList<>();
 
@@ -62,7 +74,7 @@ public class SqlGenerateTool {
         for (Pair<Row> rowPair : rowPairs) {
             Row before = rowPair.getBefore();
             Row after = rowPair.getAfter();
-            String setCondition = getCondition(tableInfo, after);
+            String setCondition = getUpdateSetCondition(tableInfo, after);
             String whereCondition = getCondition(tableInfo, before);
             String template = String.format("UPDATE `%s`.`%s` SET %s WHERE %s LIMIT 1;  #%s"
                     , tableInfo.getDbName()
@@ -85,10 +97,10 @@ public class SqlGenerateTool {
      * @return
      */
     public static List<String> insertSql(Table tableInfo, List<Row> rows, String comment) {
-        String insertCondition = tableInfo.getColumns().stream().map(columnName -> "`" + columnName + "`").collect(Collectors.joining(","));
+        String insertCondition = tableInfo.getColumns().stream().map(columnName -> "`" + columnName + "`" ).collect(Collectors.joining(","));
         List<String> sqls = new ArrayList<>();
         for (Row row : rows) {
-            String valueCondition = row.getColumns().stream().map(columnValue -> "`" + columnValue + "`").collect(Collectors.joining(","));
+            String valueCondition = row.getColumns().stream().map(SqlGenerateTool::getStringByColumnValue).collect(Collectors.joining(","));
             String template = String.format("INSERT INTO `%s`.`%s`(%s) VALUES (%s); #%s"
                     , tableInfo.getDbName()
                     , tableInfo.getTableName()

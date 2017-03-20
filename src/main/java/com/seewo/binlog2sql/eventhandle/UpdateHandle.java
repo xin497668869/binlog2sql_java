@@ -48,12 +48,12 @@ public class UpdateHandle implements BinlogEventHandle {
                 , formatTimestamp.format(eventHeader.getTimestamp()));
 
         if (isTurn) {
-            sqls.addAll(updateSql(tableInfo, rowPairs, comment));
-        } else {
             List<Pair<Row>> reversedPairs = rowPairs.stream()
                                                     .map(rowPair -> new Pair<>(rowPair.getAfter(), rowPair.getBefore()))
                                                     .collect(Collectors.toList());
             sqls.addAll(updateSql(tableInfo, reversedPairs, comment));
+        } else {
+            sqls.addAll(updateSql(tableInfo, rowPairs, comment));
         }
         return sqls;
     }

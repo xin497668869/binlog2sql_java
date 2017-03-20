@@ -66,7 +66,7 @@ public class Binlog2Sql {
         getRollBackSql(dbInfoVo);
     }
 
-    private static List<String> getRollBackSql(DbInfoVo dbInfoVo) throws Exception {
+    public static List<String> getRollBackSql(DbInfoVo dbInfoVo) throws Exception {
         final OpenReplicator or = new OpenReplicator();
         or.setUser(dbInfoVo.getUsername());
         or.setPassword(dbInfoVo.getPassword());

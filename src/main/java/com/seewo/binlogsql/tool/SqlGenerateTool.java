@@ -1,16 +1,23 @@
-package com.seewo.binlog2sql;
+package com.seewo.binlogsql.tool;
 
 import com.github.shyiko.mysql.binlog.event.EventHeaderV4;
 import com.github.shyiko.mysql.binlog.event.deserialization.ColumnType;
-import com.seewo.binlog2sql.handler.UpdateHandle;
-import com.seewo.vo.ColumnItemDataVo;
-import com.seewo.vo.ColumnVo;
-import com.seewo.vo.RowVo;
-import com.seewo.vo.TableVo;
+import com.seewo.binlogsql.handler.UpdateHandle;
+import com.seewo.binlogsql.vo.ColumnItemDataVo;
+import com.seewo.binlogsql.vo.ColumnVo;
+import com.seewo.binlogsql.vo.RowVo;
+import com.seewo.binlogsql.vo.TableVo;
 
+import javax.xml.bind.DatatypeConverter;
 import java.io.Serializable;
-import java.text.SimpleDateFormat;
+import java.sql.Time;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -19,7 +26,8 @@ import java.util.stream.Collectors;
  * @since 1.0
  */
 public class SqlGenerateTool {
-    public static SimpleDateFormat formatTimestamp = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
+    public static final ZoneId            UTC              = ZoneId.of("UTC");
+    public static       DateTimeFormatter dateTimeFormater = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     /**
      * 构造delete的sql
@@ -118,45 +126,52 @@ public class SqlGenerateTool {
     }
 
     public static String getStringByColumnValue(ColumnItemDataVo itemDataVo) {
-        switch (itemDataVo.getColumn().getColumnType()) {
-            case DATETIME:
-            case DATETIME_V2:
-            case TIMESTAMP_V2:
-                return with(formatTimestamp.format(itemDataVo.getValue()));
-            case YEAR:
-            case NEWDATE:
+        if (itemDataVo.getValue() == null) {
+            return "null";
+        }
+        switch (itemDataVo.getColumn().getJdbcType()) {
             case BIT:
-            case TIME_V2:
-            case NEWDECIMAL:
-            case ENUM:
-            case SET:
-            case GEOMETRY:
-            case TINY:
-            case SHORT:
-            case LONG:
+            case TINYINT:
+            case SMALLINT:
+            case INTEGER:
+            case BIGINT:
             case FLOAT:
+            case REAL:
             case DOUBLE:
-            case NULL:
-            case TIMESTAMP:
-            case LONGLONG:
-            case INT24:
-            case TIME:
-                return String.valueOf(itemDataVo.getValue());
+            case NUMERIC:
             case DECIMAL:
-            case DATE:
-            case VAR_STRING:
+                return String.valueOf(itemDataVo.getValue());
+            case CHAR:
             case VARCHAR:
-            case JSON:
-            case STRING:
                 return with(String.valueOf(itemDataVo.getValue()));
-            case TINY_BLOB:
-            case MEDIUM_BLOB:
-            case LONG_BLOB:
-            case BLOB:
+            case TIME:
+                Time time = (Time) itemDataVo.getValue();
+                return with(LocalDateTime.ofInstant(Instant.ofEpochMilli(time.getTime()), UTC).format(DateTimeFormatter.ISO_LOCAL_TIME));
+            case LONGVARCHAR:
+            case LONGNVARCHAR:
                 return with(new String((byte[]) itemDataVo.getValue()));
+            case TIMESTAMP:
+                //mysqlbinlog 的一个bug时间处理不对, 导致这里要特殊处理
+                if (ColumnType.DATETIME_V2.equals(itemDataVo.getColumn().getColumnType())) {
+                    return with(formatDateTime((Date) itemDataVo.getValue(), UTC));
+                } else if (ColumnType.TIMESTAMP_V2.equals(itemDataVo.getColumn().getColumnType())) {
+                    return with(formatDateTime((Date) itemDataVo.getValue(), ZoneId.systemDefault()));
+                } else {
+                    throw new RuntimeException("不支持的类型 " + itemDataVo.getColumn().getColumnType());
+                }
+            case DATE:
+                return with(String.valueOf(itemDataVo.getValue()));
+            case BLOB:
+            case LONGVARBINARY:
+                return "0x" + DatatypeConverter.printHexBinary((byte[]) itemDataVo.getValue());
             default:
                 throw new RuntimeException("不能识别的类型 " + itemDataVo);
         }
+    }
+
+    private static String formatDateTime(Date date, ZoneId zoneOffset) {
+        Instant instant = Instant.ofEpochMilli(date.getTime());
+        return dateTimeFormater.format(LocalDateTime.ofInstant(instant, zoneOffset));
     }
 
     public static String with(String value) {
@@ -175,7 +190,7 @@ public class SqlGenerateTool {
         return String.format("start %s end %s time %s"
                 , eventHeader.getPosition()
                 , eventHeader.getNextPosition()
-                , formatTimestamp.format(eventHeader.getTimestamp()));
+                , formatDateTime(new Date(eventHeader.getTimestamp()), ZoneOffset.systemDefault()));
     }
 
 

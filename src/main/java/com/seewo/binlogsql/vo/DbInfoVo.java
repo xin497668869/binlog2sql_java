@@ -1,4 +1,4 @@
-package com.seewo.vo;
+package com.seewo.binlogsql.vo;
 
 /**
  * @author linxixin@cvte.com

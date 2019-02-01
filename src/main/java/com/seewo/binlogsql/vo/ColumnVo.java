@@ -1,9 +1,11 @@
-package com.seewo.vo;
+package com.seewo.binlogsql.vo;
 
 import com.github.shyiko.mysql.binlog.event.deserialization.ColumnType;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import java.sql.JDBCType;
 
 /**
  * @author linxixin@cvte.com
@@ -13,6 +15,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class ColumnVo {
-    private String name;
+    private String     name;
     private ColumnType columnType;
+    private JDBCType   jdbcType;
 }

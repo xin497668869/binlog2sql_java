@@ -1,18 +1,17 @@
-package com.seewo.binlog2sql.handler;
+package com.seewo.binlogsql.handler;
 
 import com.github.shyiko.mysql.binlog.event.Event;
 import com.github.shyiko.mysql.binlog.event.WriteRowsEventData;
-import com.seewo.binlog2sql.BinlogEventHandle;
-import com.seewo.vo.RowVo;
-import com.seewo.vo.TableVo;
+import com.seewo.binlogsql.vo.RowVo;
+import com.seewo.binlogsql.vo.TableVo;
 
 import java.util.List;
 
-import static com.seewo.binlog2sql.SqlGenerateTool.changeToRowVo;
-import static com.seewo.binlog2sql.SqlGenerateTool.deleteSql;
-import static com.seewo.binlog2sql.SqlGenerateTool.getComment;
-import static com.seewo.binlog2sql.SqlGenerateTool.insertSql;
-import static com.seewo.binlog2sql.TableTool.getTableInfo;
+import static com.seewo.binlogsql.tool.SqlGenerateTool.changeToRowVo;
+import static com.seewo.binlogsql.tool.SqlGenerateTool.deleteSql;
+import static com.seewo.binlogsql.tool.SqlGenerateTool.getComment;
+import static com.seewo.binlogsql.tool.SqlGenerateTool.insertSql;
+import static com.seewo.binlogsql.tool.TableTool.getTableInfo;
 
 
 /**

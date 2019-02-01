@@ -1,7 +1,8 @@
-package com.seewo.binlog2sql;
+package com.seewo.binlogsql;
 
 import com.github.shyiko.mysql.binlog.event.Event;
 import com.github.shyiko.mysql.binlog.event.EventType;
+import com.seewo.binlogsql.handler.BinlogEventHandle;
 
 import java.util.HashMap;
 import java.util.List;

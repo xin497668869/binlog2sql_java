@@ -1,14 +1,15 @@
-package com.seewo.binlog2sql;
+package com.seewo.binlogsql.tool;
 
 import com.github.shyiko.mysql.binlog.event.TableMapEventData;
 import com.github.shyiko.mysql.binlog.event.deserialization.ColumnType;
-import com.seewo.vo.ColumnVo;
-import com.seewo.vo.DbInfoVo;
-import com.seewo.vo.TableVo;
+import com.seewo.binlogsql.vo.ColumnVo;
+import com.seewo.binlogsql.vo.DbInfoVo;
+import com.seewo.binlogsql.vo.TableVo;
 
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
+import java.sql.JDBCType;
 import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -54,7 +55,9 @@ public class TableTool {
             int i = 0;
             while (columns.next()) {
                 String column = columns.getString("COLUMN_NAME");
-                columnVos.add(new ColumnVo(column, ColumnType.byCode(queryEventData.getColumnTypes()[i]& 0xFF)));
+                columnVos.add(new ColumnVo(column,
+                                           ColumnType.byCode(queryEventData.getColumnTypes()[i]& 0xFF),
+                                           JDBCType.valueOf(columns.getInt("DATA_TYPE"))));
                 i++;
             }
             tableVo.setColumns(columnVos);

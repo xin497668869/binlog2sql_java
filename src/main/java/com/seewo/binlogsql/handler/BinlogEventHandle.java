@@ -1,4 +1,4 @@
-package com.seewo.binlog2sql;
+package com.seewo.binlogsql.handler;
 
 import com.github.shyiko.mysql.binlog.event.Event;
 

@@ -1,14 +1,13 @@
-package com.seewo;
+package com.seewo.binlogsql;
 
 import com.github.shyiko.mysql.binlog.BinaryLogClient;
 import com.github.shyiko.mysql.binlog.event.Event;
 import com.github.shyiko.mysql.binlog.event.EventType;
-import com.seewo.binlog2sql.MyBinlogParser;
-import com.seewo.binlog2sql.handler.DeleteHandle;
-import com.seewo.binlog2sql.handler.InsertHandle;
-import com.seewo.binlog2sql.handler.TableMapHandle;
-import com.seewo.binlog2sql.handler.UpdateHandle;
-import com.seewo.vo.DbInfoVo;
+import com.seewo.binlogsql.handler.DeleteHandle;
+import com.seewo.binlogsql.handler.InsertHandle;
+import com.seewo.binlogsql.handler.TableMapHandle;
+import com.seewo.binlogsql.handler.UpdateHandle;
+import com.seewo.binlogsql.vo.DbInfoVo;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 

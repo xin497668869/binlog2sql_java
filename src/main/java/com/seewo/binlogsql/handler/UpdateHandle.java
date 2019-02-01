@@ -1,10 +1,9 @@
-package com.seewo.binlog2sql.handler;
+package com.seewo.binlogsql.handler;
 
 import com.github.shyiko.mysql.binlog.event.Event;
 import com.github.shyiko.mysql.binlog.event.UpdateRowsEventData;
-import com.seewo.binlog2sql.BinlogEventHandle;
-import com.seewo.vo.RowVo;
-import com.seewo.vo.TableVo;
+import com.seewo.binlogsql.vo.RowVo;
+import com.seewo.binlogsql.vo.TableVo;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -12,10 +11,10 @@ import lombok.NoArgsConstructor;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static com.seewo.binlog2sql.SqlGenerateTool.changeToRowVo;
-import static com.seewo.binlog2sql.SqlGenerateTool.getComment;
-import static com.seewo.binlog2sql.SqlGenerateTool.updateSql;
-import static com.seewo.binlog2sql.TableTool.getTableInfo;
+import static com.seewo.binlogsql.tool.SqlGenerateTool.changeToRowVo;
+import static com.seewo.binlogsql.tool.SqlGenerateTool.getComment;
+import static com.seewo.binlogsql.tool.SqlGenerateTool.updateSql;
+import static com.seewo.binlogsql.tool.TableTool.getTableInfo;
 
 /**
  * @author linxixin@cvte.com

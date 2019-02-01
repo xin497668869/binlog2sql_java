@@ -1,10 +1,14 @@
 package com.seewo.binlog2sql;
 
+import com.github.shyiko.mysql.binlog.event.EventHeaderV4;
 import com.github.shyiko.mysql.binlog.event.deserialization.ColumnType;
+import com.seewo.binlog2sql.handler.UpdateHandle;
 import com.seewo.vo.ColumnItemDataVo;
+import com.seewo.vo.ColumnVo;
 import com.seewo.vo.RowVo;
 import com.seewo.vo.TableVo;
 
+import java.io.Serializable;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
@@ -74,8 +78,59 @@ public class SqlGenerateTool {
         return sqls;
     }
 
+
+    /**
+     * 构造update的sql
+     *
+     * @param tableInfo 表信息, 包含数据库名, 表名, 列名
+     * @param rowPairs  binlog中多行, 每行有对应列的值
+     * @return
+     */
+    public static List<String> updateSql(TableVo tableInfo, List<UpdateHandle.Pair> rowPairs, String comment) {
+        List<String> sqls = new ArrayList<>();
+        for (UpdateHandle.Pair rowPair : rowPairs) {
+            String setCondition = getUpdateSetCondition(rowPair.getAfter());
+            String whereCondition = getCondition(rowPair.getBefore());
+            String template = String.format("UPDATE `%s`.`%s` SET %s WHERE %s LIMIT 1;  #%s"
+                    , tableInfo.getDbName()
+                    , tableInfo.getTableName()
+                    , setCondition
+                    , whereCondition
+                    , comment);
+
+            sqls.add(template);
+
+        }
+        return sqls;
+    }
+
+
+    private static String getUpdateSetCondition(RowVo rowVo) {
+        List<String> whereCondition = new ArrayList<>();
+
+        for (ColumnItemDataVo columnItemDataVo : rowVo.getValue()) {
+            String item = String.format("`%s` = %s", columnItemDataVo.getColumn().getName(), getStringByColumnValue(columnItemDataVo));
+            if (item != null) {
+                whereCondition.add(item);
+            }
+        }
+        return String.join(" , ", whereCondition);
+    }
+
     public static String getStringByColumnValue(ColumnItemDataVo itemDataVo) {
         switch (itemDataVo.getColumn().getColumnType()) {
+            case DATETIME:
+            case DATETIME_V2:
+            case TIMESTAMP_V2:
+                return with(formatTimestamp.format(itemDataVo.getValue()));
+            case YEAR:
+            case NEWDATE:
+            case BIT:
+            case TIME_V2:
+            case NEWDECIMAL:
+            case ENUM:
+            case SET:
+            case GEOMETRY:
             case TINY:
             case SHORT:
             case LONG:
@@ -86,25 +141,13 @@ public class SqlGenerateTool {
             case LONGLONG:
             case INT24:
             case TIME:
-            case DATETIME:
-            case DATETIME_V2:
-                return with(formatTimestamp.format(itemDataVo.getValue()));
-            case YEAR:
-            case NEWDATE:
-            case VARCHAR:
-            case BIT:
-            case TIMESTAMP_V2:
-            case TIME_V2:
-            case JSON:
-            case NEWDECIMAL:
-            case ENUM:
-            case SET:
-            case VAR_STRING:
-            case STRING:
-            case GEOMETRY:
                 return String.valueOf(itemDataVo.getValue());
             case DECIMAL:
             case DATE:
+            case VAR_STRING:
+            case VARCHAR:
+            case JSON:
+            case STRING:
                 return with(String.valueOf(itemDataVo.getValue()));
             case TINY_BLOB:
             case MEDIUM_BLOB:
@@ -128,4 +171,32 @@ public class SqlGenerateTool {
         }
     }
 
+    public static String getComment(EventHeaderV4 eventHeader) {
+        return String.format("start %s end %s time %s"
+                , eventHeader.getPosition()
+                , eventHeader.getNextPosition()
+                , formatTimestamp.format(eventHeader.getTimestamp()));
+    }
+
+
+    public static List<RowVo> changeToRowVo(TableVo tableVo, List<Serializable[]> rawRows) {
+        List<RowVo> rowVos = new ArrayList<>();
+
+        for (Serializable[] row : rawRows) {
+            RowVo rowVo = changeToRowVo(tableVo, row);
+            rowVos.add(rowVo);
+        }
+        return rowVos;
+    }
+
+    public static RowVo changeToRowVo(TableVo tableVo, Serializable[] row) {
+        RowVo rowVo = new RowVo();
+        List<ColumnItemDataVo> columnItemData = new ArrayList<>();
+        rowVo.setValue(columnItemData);
+        for (int i = 0; i < row.length; i++) {
+            ColumnVo columnVo = tableVo.getColumns().get(i);
+            columnItemData.add(new ColumnItemDataVo(row[i], columnVo));
+        }
+        return rowVo;
+    }
 }

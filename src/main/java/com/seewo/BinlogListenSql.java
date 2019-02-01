@@ -4,8 +4,10 @@ import com.github.shyiko.mysql.binlog.BinaryLogClient;
 import com.github.shyiko.mysql.binlog.event.Event;
 import com.github.shyiko.mysql.binlog.event.EventType;
 import com.seewo.binlog2sql.MyBinlogParser;
+import com.seewo.binlog2sql.handler.DeleteHandle;
 import com.seewo.binlog2sql.handler.InsertHandle;
 import com.seewo.binlog2sql.handler.TableMapHandle;
+import com.seewo.binlog2sql.handler.UpdateHandle;
 import com.seewo.vo.DbInfoVo;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -67,20 +69,16 @@ public class BinlogListenSql {
                                                        dbInfoVo.getUsername(),
                                                        dbInfoVo.getPassword());
         or.setServerId(1);
-//        or.setBinlogPosition(4);
-//        or.setbinlo(4);
-//        or.setBinlogFileName("mysql-bin.000001");
-        or.setBinlogFilename(getFirstBinLogName(dbInfoVo));
-        boolean isTurn = true; //是否反sql
-//        or.setEventDeserializer(new EventDeserializer());
-        myBinlogParser.registerHandle(new InsertHandle(), EventType.WRITE_ROWS,EventType.EXT_WRITE_ROWS,EventType.PRE_GA_WRITE_ROWS);
-        myBinlogParser.registerHandle(new TableMapHandle(dbInfoVo), EventType.TABLE_MAP);
 
+        or.setBinlogFilename(getFirstBinLogName(dbInfoVo));
+        myBinlogParser.registerHandle(new InsertHandle(), EventType.WRITE_ROWS, EventType.EXT_WRITE_ROWS, EventType.PRE_GA_WRITE_ROWS);
+        myBinlogParser.registerHandle(new DeleteHandle(), EventType.DELETE_ROWS, EventType.EXT_DELETE_ROWS, EventType.PRE_GA_DELETE_ROWS);
+        myBinlogParser.registerHandle(new UpdateHandle(), EventType.UPDATE_ROWS, EventType.EXT_UPDATE_ROWS, EventType.PRE_GA_UPDATE_ROWS);
+        myBinlogParser.registerHandle(new TableMapHandle(dbInfoVo), EventType.TABLE_MAP);
 
         or.registerEventListener(new BinaryLogClient.EventListener() {
             @Override
             public void onEvent(Event event) {
-                System.out.println(event);
                 myBinlogParser.handle(event);
             }
         });

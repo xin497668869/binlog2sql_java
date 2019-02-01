@@ -4,6 +4,7 @@ import com.github.shyiko.mysql.binlog.event.Event;
 import com.github.shyiko.mysql.binlog.event.EventType;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -23,7 +24,8 @@ public class MyBinlogParser {
     public void handle(Event event) {
         BinlogEventHandle binlogEventHandle = handleRegisterMap.get(event.getHeader().getEventType());
         if(binlogEventHandle != null) {
-            binlogEventHandle.handle(event,false);
+            List<String> sql = binlogEventHandle.handle(event, false);
+            System.out.println(sql);
         }
     }
 }

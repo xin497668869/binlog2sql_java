@@ -1,6 +1,9 @@
 package com.seewo.binlogsql;
 
 
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.io.IOUtils;
+
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -16,7 +19,20 @@ import java.util.function.Function;
  * @author linxixin@cvte.com
  * @since 1.0
  */
+@Slf4j
 public class MysqlUtil {
+
+    public static final String ORG_MYSQL_URL = "jdbc:mysql://localhost:3306/test2?user=root&password=root&useUnicode=true&characterEncoding=UTF8";
+
+    public static List<Map<String, Object>> queryByFile(String fileName) throws Exception {
+        String sql = new String(IOUtils.resourceToByteArray(fileName, ClassLoader.getSystemClassLoader()));
+        return query(sql);
+    }
+
+    public static Integer insertOrUpdateByFile(String fileName) throws Exception {
+        String sql = new String(IOUtils.resourceToByteArray(fileName, ClassLoader.getSystemClassLoader()));
+        return insertOrUpdate(sql);
+    }
 
     public static Integer insertOrUpdate(String sql) throws Exception {
         return executeSql(sql, connection -> {
@@ -26,7 +42,7 @@ public class MysqlUtil {
                 e.printStackTrace();
             }
             return null;
-        });
+        }, ORG_MYSQL_URL);
     }
 
     public static List<Map<String, Object>> query(String sql) throws Exception {
@@ -50,31 +66,33 @@ public class MysqlUtil {
                     }
                     resultList.add(resultMap);
                 }
-                System.out.println("成功查询数据库，查得数据：" + resultList);
+                log.info("成功查询数据库，查得数据：" + resultList);
                 return resultList;
             } catch (Exception e) {
                 e.printStackTrace();
                 return null;
             }
-        });
+        }, ORG_MYSQL_URL);
     }
 
     /**
      * 查询SQL
      *
+     * @param url
      * @param sql 查询语句
      * @return 数据集合
      */
-    public static <T> T executeSql(String sql, Function<Connection, T> execute) throws Exception {
+    private static <T> T executeSql(String sql, Function<Connection, T> execute, String url) throws Exception {
         Class.forName("com.mysql.jdbc.Driver");
-        System.out.println("成功加载驱动");
+        log.info("成功加载驱动");
 
-        String url = "jdbc:mysql://localhost:3306/test2?user=root&password=root&useUnicode=true&characterEncoding=UTF8";
-
-        System.out.println("成功获取连接");
+        log.info("成功获取连接");
 
 
         try (java.sql.Connection connection = DriverManager.getConnection(url)) {
+            if (execute == null) {
+                return null;
+            }
             return execute.apply(connection);
 
         } catch (Throwable t) {

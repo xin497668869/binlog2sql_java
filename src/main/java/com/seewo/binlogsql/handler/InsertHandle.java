@@ -2,9 +2,11 @@ package com.seewo.binlogsql.handler;
 
 import com.github.shyiko.mysql.binlog.event.Event;
 import com.github.shyiko.mysql.binlog.event.WriteRowsEventData;
+import com.seewo.binlogsql.vo.EventFilterVo;
 import com.seewo.binlogsql.vo.RowVo;
 import com.seewo.binlogsql.vo.TableVo;
 
+import java.util.Collections;
 import java.util.List;
 
 import static com.seewo.binlogsql.tool.SqlGenerateTool.changeToRowVo;
@@ -22,6 +24,11 @@ import static com.seewo.binlogsql.tool.TableTool.getTableInfo;
 
 public class InsertHandle implements BinlogEventHandle {
 
+    private final EventFilterVo eventFilterVo;
+
+    public InsertHandle(EventFilterVo eventFilterVo) {
+        this.eventFilterVo = eventFilterVo;
+    }
 
     @Override
     public List<String> handle(Event event, boolean isTurn) {
@@ -29,7 +36,11 @@ public class InsertHandle implements BinlogEventHandle {
 
         TableVo tableVoInfo = getTableInfo(writeRowsEventV2.getTableId());
 
-        List<RowVo> rows = changeToRowVo(tableVoInfo, writeRowsEventV2.getRows());
+        if(!eventFilterVo.filter(tableVoInfo)) {
+            return Collections.emptyList();
+        }
+
+       List<RowVo> rows = changeToRowVo(tableVoInfo, writeRowsEventV2.getRows());
         if (isTurn) {
             return deleteSql(tableVoInfo, rows, getComment(event.getHeader()));
         } else {

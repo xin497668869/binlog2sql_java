@@ -2,12 +2,14 @@ package com.seewo.binlogsql.handler;
 
 import com.github.shyiko.mysql.binlog.event.Event;
 import com.github.shyiko.mysql.binlog.event.UpdateRowsEventData;
+import com.seewo.binlogsql.vo.EventFilterVo;
 import com.seewo.binlogsql.vo.RowVo;
 import com.seewo.binlogsql.vo.TableVo;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -23,11 +25,21 @@ import static com.seewo.binlogsql.tool.TableTool.getTableInfo;
  */
 public class UpdateHandle implements BinlogEventHandle {
 
+    private final EventFilterVo eventFilterVo;
+
+    public UpdateHandle(EventFilterVo eventFilterVo) {
+        this.eventFilterVo = eventFilterVo;
+    }
+
     @Override
     public List<String> handle(Event event, boolean isTurn) {
 
         UpdateRowsEventData updateRowsEventData = event.getData();
         TableVo tableVoInfo = getTableInfo(updateRowsEventData.getTableId());
+
+        if(!eventFilterVo.filter(tableVoInfo)) {
+            return Collections.emptyList();
+        }
         List<Pair> updateRows = updateRowsEventData.getRows().stream().map(entry -> {
             RowVo key = changeToRowVo(tableVoInfo, entry.getKey());
             RowVo value = changeToRowVo(tableVoInfo, entry.getValue());

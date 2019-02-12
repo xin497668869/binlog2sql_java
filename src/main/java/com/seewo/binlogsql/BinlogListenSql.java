@@ -8,6 +8,9 @@ import com.seewo.binlogsql.handler.TableMapHandle;
 import com.seewo.binlogsql.handler.UpdateHandle;
 import com.seewo.binlogsql.vo.DbInfoVo;
 import com.seewo.binlogsql.vo.EventFilterVo;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.experimental.Accessors;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
@@ -23,9 +26,8 @@ import java.sql.Statement;
  * @description
  */
 @Slf4j
+@Accessors(chain = true)
 public class BinlogListenSql {
-
-
     static {
         try {
             Class.forName("com.mysql.jdbc.Driver");
@@ -34,7 +36,18 @@ public class BinlogListenSql {
         }
     }
 
-    public static String getFirstBinLogName(DbInfoVo dbInfoVo) {
+    @Getter
+    private BinlogParser    binlogParser  = new BinlogParser();
+    private DbInfoVo        dbInfoVo;
+    @Setter
+    private EventFilterVo   eventFilterVo = new EventFilterVo();
+    private BinaryLogClient binaryLogClient;
+
+    public BinlogListenSql(DbInfoVo dbInfoVo) {
+        this.dbInfoVo = dbInfoVo;
+    }
+
+    private String getFirstBinLogName() {
         String url = "jdbc:mysql://" + dbInfoVo.getHost() + ":" + dbInfoVo.getPort() + "/mysql";
         try (Connection conn = DriverManager.getConnection(url, dbInfoVo.getUsername(), dbInfoVo.getPassword()); Statement statement = conn.createStatement()) {
             ResultSet resultSet = statement.executeQuery("show master logs;");
@@ -47,48 +60,49 @@ public class BinlogListenSql {
         return null;
     }
 
-    public static void main(String[] args) throws Exception {
-        log.error("#############");
-        DbInfoVo dbInfoVo = new DbInfoVo();
-        dbInfoVo.setHost("localhost");
-        dbInfoVo.setPort(3306);
-        dbInfoVo.setUsername("root");
-        dbInfoVo.setPassword("root");
-        getRollBackSql(dbInfoVo, new EventFilterVo());
+    private void initBinlogParser() {
+
+        binlogParser.registerHandle(new InsertHandle(eventFilterVo), EventType.WRITE_ROWS, EventType.EXT_WRITE_ROWS, EventType.PRE_GA_WRITE_ROWS);
+        binlogParser.registerHandle(new DeleteHandle(eventFilterVo), EventType.DELETE_ROWS, EventType.EXT_DELETE_ROWS, EventType.PRE_GA_DELETE_ROWS);
+        binlogParser.registerHandle(new UpdateHandle(eventFilterVo), EventType.UPDATE_ROWS, EventType.EXT_UPDATE_ROWS, EventType.PRE_GA_UPDATE_ROWS);
+        binlogParser.registerHandle(new TableMapHandle(dbInfoVo), EventType.TABLE_MAP);
     }
 
-    public static MyBinlogParser getRollBackSql(DbInfoVo dbInfoVo, EventFilterVo eventFilterVo) throws Exception {
-        MyBinlogParser myBinlogParser = new MyBinlogParser();
+    public BinlogListenSql connectAndListen() {
+        initBinlogParser();
 
-        final BinaryLogClient or = new BinaryLogClient(dbInfoVo.getHost(),
-                                                       dbInfoVo.getPort(),
-                                                       dbInfoVo.getUsername(),
-                                                       dbInfoVo.getPassword());
-        or.setServerId(1);
+        binaryLogClient = new BinaryLogClient(dbInfoVo.getHost(),
+                                              dbInfoVo.getPort(),
+                                              dbInfoVo.getUsername(),
+                                              dbInfoVo.getPassword());
+        binaryLogClient.setServerId(1);
+        binaryLogClient.setBinlogFilename(getFirstBinLogName());
 
-        or.setBinlogFilename(getFirstBinLogName(dbInfoVo));
-        myBinlogParser.registerHandle(new InsertHandle(eventFilterVo), EventType.WRITE_ROWS, EventType.EXT_WRITE_ROWS, EventType.PRE_GA_WRITE_ROWS);
-        myBinlogParser.registerHandle(new DeleteHandle(eventFilterVo), EventType.DELETE_ROWS, EventType.EXT_DELETE_ROWS, EventType.PRE_GA_DELETE_ROWS);
-        myBinlogParser.registerHandle(new UpdateHandle(eventFilterVo), EventType.UPDATE_ROWS, EventType.EXT_UPDATE_ROWS, EventType.PRE_GA_UPDATE_ROWS);
-        myBinlogParser.registerHandle(new TableMapHandle(dbInfoVo), EventType.TABLE_MAP);
-        or.registerEventListener(event -> {
+        binaryLogClient.registerEventListener(event -> {
             if (eventFilterVo.getStartTime() > event.getHeader().getTimestamp()) {
-                log.info(event.getHeader().getTimestamp() + "  "+eventFilterVo.getStartTime());
+                log.info(event.getHeader().getTimestamp() + "  " + eventFilterVo.getStartTime());
                 return;
             }
-            myBinlogParser.handle(event);
+            binlogParser.handle(event);
         });
 
-
-//        or.setBlocking(false);
         new Thread(() -> {
             try {
-                or.connect();
+                binaryLogClient.connect();
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }).start();
-        return myBinlogParser;
+        return this;
+    }
+
+    public void close() {
+        try {
+            binaryLogClient.disconnect();
+            binaryLogClient = null;
+        } catch (IOException e) {
+            log.error("关闭失败", e);
+        }
     }
 
 }

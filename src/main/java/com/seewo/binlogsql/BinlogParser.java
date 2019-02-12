@@ -15,7 +15,7 @@ import java.util.Map;
  * @since 1.0
  */
 @Slf4j
-public class MyBinlogParser {
+public class BinlogParser {
 
     @Getter
     private Map<EventType, BinlogEventHandle> handleRegisterMap = new HashMap<>();

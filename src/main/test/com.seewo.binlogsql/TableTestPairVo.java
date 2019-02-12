@@ -14,6 +14,6 @@ public class TableTestPairVo {
     private String testTableName;
 
     public String replaceTableName(String sql) {
-        return sql.replace(orgTableName, testTableName);
+        return sql.replace("`" + orgTableName + "`", "`" + testTableName + "`");
     }
 }

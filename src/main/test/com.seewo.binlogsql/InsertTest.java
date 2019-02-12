@@ -8,7 +8,7 @@ import com.seewo.binlogsql.handler.UpdateHandle;
 import com.seewo.binlogsql.vo.DbInfoVo;
 import com.seewo.binlogsql.vo.EventFilterVo;
 import lombok.extern.slf4j.Slf4j;
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -18,7 +18,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-import static com.seewo.binlogsql.BinlogListenSql.getRollBackSql;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
@@ -28,13 +27,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 @Slf4j
 public class InsertTest {
 
-    public static final TableTestPairVo COMMON_TABLE_PAIR = new TableTestPairVo("flashback_test_common", "test_flashback_test_common");
+    public static final TableTestPairVo           COMMON_TABLE_PAIR = new TableTestPairVo("flashback_test_common", "test_flashback_test_common");
+    public static       List<Map<String, Object>> beforeData        = new ArrayList<>();
 
-    public static List<SqlTestVo> sqlTestVos = new ArrayList<>();
+    public static  List<SqlTestVo> sqlTestVos = new ArrayList<>();
+    private static BinlogListenSql binlogListenSql;
 
-
-    @BeforeAll
-    static void initAll() throws Exception {
+    @BeforeEach
+     void initAll() throws Exception {
         DbInfoVo dbInfoVo = new DbInfoVo();
         dbInfoVo.setHost("localhost");
         dbInfoVo.setPort(3306);
@@ -45,14 +45,27 @@ public class InsertTest {
                 .setDefaultInclude(false)
                 .setIncludeDbNames(Collections.singletonList("test2"))
                 .setIncludeTableNames(Collections.singletonList(COMMON_TABLE_PAIR.getOrgTableName()));
-        MyBinlogParser rollBackSql = getRollBackSql(dbInfoVo, eventFilterVo);
-
-        injectProxy(rollBackSql, sqlTestVos);
+        binlogListenSql = new BinlogListenSql(dbInfoVo)
+                .setEventFilterVo(eventFilterVo)
+                .connectAndListen();
+        injectProxy(binlogListenSql, sqlTestVos);
         Thread.sleep(3000);
+
+        cleanData(COMMON_TABLE_PAIR);
+        Thread.sleep(3000);
+        sqlTestVos.clear();
+        log.info("数据清除完毕");
+
+        binlogListenSql.close();
     }
 
-    private static void injectProxy(MyBinlogParser rollBackSql, List<SqlTestVo> sqlTestVos) {
-        Map<EventType, BinlogEventHandle> handleRegisterMap = rollBackSql.getHandleRegisterMap();
+    public static void cleanData(TableTestPairVo tableTestPairVo) throws Exception {
+        MysqlUtil.insertOrUpdate("DELETE FROM " + tableTestPairVo.getOrgTableName());
+        MysqlUtil.insertOrUpdate("DELETE FROM " + tableTestPairVo.getTestTableName());
+    }
+
+    private static void injectProxy(BinlogListenSql binlogListenSql, List<SqlTestVo> sqlTestVos) {
+        Map<EventType, BinlogEventHandle> handleRegisterMap = binlogListenSql.getBinlogParser().getHandleRegisterMap();
         for (EventType eventType : handleRegisterMap.keySet()) {
             BinlogEventHandle orgBinlogEventHandle = handleRegisterMap.get(eventType);
             if (orgBinlogEventHandle instanceof InsertHandle
@@ -62,23 +75,24 @@ public class InsertTest {
         }
     }
 
-    public static void cleanData(TableTestPairVo tableTestPairVo) throws Exception {
-        MysqlUtil.insertOrUpdate("DELETE FROM " + tableTestPairVo.getOrgTableName());
-        MysqlUtil.insertOrUpdate("DELETE FROM " + tableTestPairVo.getTestTableName());
+    @AfterEach
+    private void close() {
+        binlogListenSql.close();
+        binlogListenSql = null;
     }
 
-    @BeforeEach
-    private void before() throws Exception {
-        cleanData(COMMON_TABLE_PAIR);
-        sqlTestVos.clear();
-        Thread.sleep(5000);
-        log.info("数据清除完毕");
+    private void saveBeforeDbDataTemporary(TableTestPairVo tableTestPairVo) throws Exception {
+        List<Map<String, Object>> orgDatas = MysqlUtil.query("SELECT * FROM " + tableTestPairVo.getOrgTableName() + " ");
+        changeByteArrayData(orgDatas);
+        beforeData.clear();
+        beforeData.addAll(orgDatas);
     }
 
     @Test
     void myFirstTest() throws Exception {
+        saveBeforeDbDataTemporary(COMMON_TABLE_PAIR);
         MysqlUtil.insertOrUpdateByFile("insertTest.sql");
-        Thread.sleep(1000);
+        Thread.sleep(2000);
         for (SqlTestVo sqlTestVo : sqlTestVos) {
             for (String sql : sqlTestVo.getSqls()) {
                 log.info("准备插入测试表 " + sql);
@@ -86,6 +100,37 @@ public class InsertTest {
             }
         }
         comparedTableData(COMMON_TABLE_PAIR);
+
+        log.info("准备逆向测试");
+        for (SqlTestVo sqlTestVo : sqlTestVos) {
+            for (String rollSql : sqlTestVo.getRollSqls()) {
+                log.info("准备roll测试表 " + rollSql);
+                MysqlUtil.insertOrUpdate(COMMON_TABLE_PAIR.replaceTableName(rollSql));
+            }
+        }
+        comparedBeforeTableData(COMMON_TABLE_PAIR);
+    }
+
+    void myFirstTest2() throws Exception {
+        saveBeforeDbDataTemporary(COMMON_TABLE_PAIR);
+        MysqlUtil.insertOrUpdateByFile("insertTest.sql");
+        Thread.sleep(2000);
+        for (SqlTestVo sqlTestVo : sqlTestVos) {
+            for (String sql : sqlTestVo.getSqls()) {
+                log.info("准备插入测试表 " + sql);
+                MysqlUtil.insertOrUpdate(COMMON_TABLE_PAIR.replaceTableName(sql));
+            }
+        }
+        comparedTableData(COMMON_TABLE_PAIR);
+
+        log.info("准备逆向测试");
+        for (SqlTestVo sqlTestVo : sqlTestVos) {
+            for (String rollSql : sqlTestVo.getRollSqls()) {
+                log.info("准备roll测试表 " + rollSql);
+                MysqlUtil.insertOrUpdate(COMMON_TABLE_PAIR.replaceTableName(rollSql));
+            }
+        }
+        comparedBeforeTableData(COMMON_TABLE_PAIR);
     }
 
     public void changeByteArrayData(List<Map<String, Object>> datas) {
@@ -98,15 +143,20 @@ public class InsertTest {
         }
     }
 
+    private void comparedBeforeTableData(TableTestPairVo tableTestPairVo) throws Exception {
+        List<Map<String, Object>> testDatas = MysqlUtil.query("SELECT * FROM " + tableTestPairVo.getTestTableName() + " ");
+        changeByteArrayData(testDatas);
+        assertEquals(beforeData, testDatas);
+
+    }
+
     private void comparedTableData(TableTestPairVo tableTestPairVo) throws Exception {
         List<Map<String, Object>> orgDatas = MysqlUtil.query("SELECT * FROM " + tableTestPairVo.getOrgTableName() + " ");
         List<Map<String, Object>> testDatas = MysqlUtil.query("SELECT * FROM " + tableTestPairVo.getTestTableName() + " ");
         changeByteArrayData(orgDatas);
         changeByteArrayData(testDatas);
         assertEquals(orgDatas, testDatas);
-//        for (int i = 0; i < orgDatas.size(); i++) {
-//            assertEquals(orgDatas.get(i),testDatas.get(i));
-//        }
+
     }
 
 }

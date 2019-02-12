@@ -35,7 +35,7 @@ public class MysqlUtil {
     }
 
     public static Integer insertOrUpdate(String sql) throws Exception {
-        return executeSql(sql, connection -> {
+        return executeSql(connection -> {
             try (Statement statement = connection.createStatement()) {
                 return statement.executeUpdate(sql);
             } catch (Exception e) {
@@ -46,7 +46,7 @@ public class MysqlUtil {
     }
 
     public static List<Map<String, Object>> query(String sql) throws Exception {
-        return executeSql(sql, connection -> {
+        return executeSql(connection -> {
             try (Statement statement = connection.createStatement();
                  ResultSet resultSet = statement.executeQuery(sql)) {
 
@@ -79,15 +79,10 @@ public class MysqlUtil {
      * 查询SQL
      *
      * @param url
-     * @param sql 查询语句
      * @return 数据集合
      */
-    private static <T> T executeSql(String sql, Function<Connection, T> execute, String url) throws Exception {
+    private static <T> T executeSql(Function<Connection, T> execute, String url) throws Exception {
         Class.forName("com.mysql.jdbc.Driver");
-        log.info("成功加载驱动");
-
-        log.info("成功获取连接");
-
 
         try (java.sql.Connection connection = DriverManager.getConnection(url)) {
             if (execute == null) {

@@ -18,7 +18,7 @@ public class Bootstrap {
         dbInfoVo.setUsername("root");
         dbInfoVo.setPassword("root");
         new BinlogListenSql(dbInfoVo)
-                .setFilter(new CommonFilter())
+                .setFilter(new CommonFilter().setStartTime(System.currentTimeMillis()))
                 .connectAndListen();
     }
 }

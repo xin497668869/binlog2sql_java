@@ -30,7 +30,9 @@ public class BinlogParser {
         BinlogEventHandle binlogEventHandle = handleRegisterMap.get(event.getHeader().getEventType());
         if (binlogEventHandle != null) {
             List<String> sql = binlogEventHandle.handle(event, false);
-            log.info("handle sql: " + sql);
+            if (!sql.isEmpty()) {
+                log.info("handle sql: " + sql);
+            }
         }
     }
 }

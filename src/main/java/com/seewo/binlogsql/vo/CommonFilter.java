@@ -21,24 +21,28 @@ public class CommonFilter implements Filter {
     private long                  startTime;
 
 
-     @Override
-     public boolean filter(TableVo tableVoInfo) {
-         for (FilterDbTableVo includeDbTableVo : includeDbTableVos) {
-             if (Objects.equals(tableVoInfo.getDbName(), includeDbTableVo.getDbName()) &&
-                     Objects.equals(tableVoInfo.getTableName(), includeDbTableVo.getTableName())) {
-                 return true;
-             }
-         }
-         return false;
-     }
+    @Override
+    public boolean filter(TableVo tableVoInfo) {
+        if (includeDbTableVos == null) {
+            return true;
+        }
+        if (includeDbTableVos.isEmpty()) {
+            log.warn("没有设置监听的数据库表");
+            return false;
+        }
+        for (FilterDbTableVo includeDbTableVo : includeDbTableVos) {
+            if (Objects.equals(tableVoInfo.getDbName(), includeDbTableVo.getDbName()) &&
+                    Objects.equals(tableVoInfo.getTableName(), includeDbTableVo.getTableName())) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     @Override
     public boolean filter(Event event) {
-        if (startTime > event.getHeader().getTimestamp()) {
-//            log.info(startTime + "  " + event.getHeader().getTimestamp());
-            return false;
-        }
-        return true;
-   }
+        //            log.info(startTime + "  " + event.getHeader().getTimestamp());
+        return startTime <= event.getHeader().getTimestamp();
+    }
 
 }

@@ -2,7 +2,7 @@ package com.seewo.binlogsql.handler;
 
 import com.github.shyiko.mysql.binlog.event.DeleteRowsEventData;
 import com.github.shyiko.mysql.binlog.event.Event;
-import com.seewo.binlogsql.vo.EventFilterVo;
+import com.seewo.binlogsql.Filter;
 import com.seewo.binlogsql.vo.RowVo;
 import com.seewo.binlogsql.vo.TableVo;
 
@@ -22,10 +22,10 @@ import static com.seewo.binlogsql.tool.TableTool.getTableInfo;
  */
 public class DeleteHandle implements BinlogEventHandle {
 
-    private final EventFilterVo eventFilterVo;
+    private final Filter filter;
 
-    public DeleteHandle(EventFilterVo eventFilterVo) {
-        this.eventFilterVo = eventFilterVo;
+    public DeleteHandle(Filter filter) {
+        this.filter = filter;
     }
 
     @Override
@@ -33,7 +33,7 @@ public class DeleteHandle implements BinlogEventHandle {
         DeleteRowsEventData deleteRowsEventData = event.getData();
         TableVo tableVoInfo = getTableInfo(deleteRowsEventData.getTableId());
 
-        if(!eventFilterVo.filter(tableVoInfo)) {
+        if(!filter.filter(tableVoInfo)) {
             return Collections.emptyList();
         }
 

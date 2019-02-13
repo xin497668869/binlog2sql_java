@@ -3,6 +3,7 @@ package com.seewo.binlogsql;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.IOUtils;
+import org.junit.platform.commons.util.StringUtils;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -31,7 +32,14 @@ public class MysqlUtil {
 
     public static Integer insertOrUpdateByFile(String fileName) throws Exception {
         String sql = new String(IOUtils.resourceToByteArray(fileName, ClassLoader.getSystemClassLoader()));
-        return insertOrUpdate(sql);
+        String[] split = sql.split("\r\n\r\n");
+        int count = 0;
+        for (String s : split) {
+            if (StringUtils.isNotBlank(s)) {
+                count += insertOrUpdate(s);
+            }
+        }
+        return count;
     }
 
     public static Integer insertOrUpdate(String sql) throws Exception {
@@ -39,9 +47,8 @@ public class MysqlUtil {
             try (Statement statement = connection.createStatement()) {
                 return statement.executeUpdate(sql);
             } catch (Exception e) {
-                e.printStackTrace();
+                throw new RuntimeException(e);
             }
-            return null;
         }, ORG_MYSQL_URL);
     }
 
@@ -69,8 +76,8 @@ public class MysqlUtil {
                 log.info("成功查询数据库，查得数据：" + resultList);
                 return resultList;
             } catch (Exception e) {
-                e.printStackTrace();
-                return null;
+
+                throw new RuntimeException(e);
             }
         }, ORG_MYSQL_URL);
     }
@@ -91,9 +98,7 @@ public class MysqlUtil {
             return execute.apply(connection);
 
         } catch (Throwable t) {
-            // TODO 处理异常
-            t.printStackTrace();
-            return null;
+            throw new RuntimeException(t);
         }
     }
 }

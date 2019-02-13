@@ -19,7 +19,9 @@ public class ProxyBinlogEventHandle implements BinlogEventHandle {
     public List<String> handle(Event event, boolean isTurn) {
         List<String> sql = binlogEventHandle.handle(event, false);
         List<String> rollSql = binlogEventHandle.handle(event, true);
-        sqlTestVos.add(new SqlTestVo(sql, rollSql));
+        if (!sql.isEmpty()) {
+            sqlTestVos.add(new SqlTestVo(sql, rollSql));
+        }
         return sql;
     }
 }

@@ -2,7 +2,7 @@ package com.seewo.binlogsql.handler;
 
 import com.github.shyiko.mysql.binlog.event.Event;
 import com.github.shyiko.mysql.binlog.event.UpdateRowsEventData;
-import com.seewo.binlogsql.vo.EventFilterVo;
+import com.seewo.binlogsql.Filter;
 import com.seewo.binlogsql.vo.RowVo;
 import com.seewo.binlogsql.vo.TableVo;
 import lombok.AllArgsConstructor;
@@ -25,10 +25,10 @@ import static com.seewo.binlogsql.tool.TableTool.getTableInfo;
  */
 public class UpdateHandle implements BinlogEventHandle {
 
-    private final EventFilterVo eventFilterVo;
+    private final Filter filter;
 
-    public UpdateHandle(EventFilterVo eventFilterVo) {
-        this.eventFilterVo = eventFilterVo;
+    public UpdateHandle(Filter filterVo) {
+        this.filter = filterVo;
     }
 
     @Override
@@ -37,7 +37,7 @@ public class UpdateHandle implements BinlogEventHandle {
         UpdateRowsEventData updateRowsEventData = event.getData();
         TableVo tableVoInfo = getTableInfo(updateRowsEventData.getTableId());
 
-        if(!eventFilterVo.filter(tableVoInfo)) {
+        if(!filter.filter(tableVoInfo)) {
             return Collections.emptyList();
         }
         List<Pair> updateRows = updateRowsEventData.getRows().stream().map(entry -> {

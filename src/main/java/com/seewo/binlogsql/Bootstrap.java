@@ -1,7 +1,7 @@
 package com.seewo.binlogsql;
 
 import com.seewo.binlogsql.vo.DbInfoVo;
-import com.seewo.binlogsql.vo.EventFilterVo;
+import com.seewo.binlogsql.vo.CommonFilter;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -18,7 +18,7 @@ public class Bootstrap {
         dbInfoVo.setUsername("root");
         dbInfoVo.setPassword("root");
         new BinlogListenSql(dbInfoVo)
-                .setEventFilterVo(new EventFilterVo())
+                .setFilter(new CommonFilter())
                 .connectAndListen();
     }
 }

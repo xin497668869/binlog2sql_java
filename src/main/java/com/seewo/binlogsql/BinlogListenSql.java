@@ -7,7 +7,6 @@ import com.seewo.binlogsql.handler.InsertHandle;
 import com.seewo.binlogsql.handler.TableMapHandle;
 import com.seewo.binlogsql.handler.UpdateHandle;
 import com.seewo.binlogsql.vo.DbInfoVo;
-import com.seewo.binlogsql.vo.EventFilterVo;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
@@ -37,10 +36,11 @@ public class BinlogListenSql {
     }
 
     @Getter
-    private BinlogParser    binlogParser  = new BinlogParser();
+    private BinlogParser    binlogParser = new BinlogParser();
     private DbInfoVo        dbInfoVo;
     @Setter
-    private EventFilterVo   eventFilterVo = new EventFilterVo();
+    private Filter          filter       = new Filter() {
+    };
     private BinaryLogClient binaryLogClient;
 
     public BinlogListenSql(DbInfoVo dbInfoVo) {
@@ -62,9 +62,9 @@ public class BinlogListenSql {
 
     private void initBinlogParser() {
 
-        binlogParser.registerHandle(new InsertHandle(eventFilterVo), EventType.WRITE_ROWS, EventType.EXT_WRITE_ROWS, EventType.PRE_GA_WRITE_ROWS);
-        binlogParser.registerHandle(new DeleteHandle(eventFilterVo), EventType.DELETE_ROWS, EventType.EXT_DELETE_ROWS, EventType.PRE_GA_DELETE_ROWS);
-        binlogParser.registerHandle(new UpdateHandle(eventFilterVo), EventType.UPDATE_ROWS, EventType.EXT_UPDATE_ROWS, EventType.PRE_GA_UPDATE_ROWS);
+        binlogParser.registerHandle(new InsertHandle(filter), EventType.WRITE_ROWS, EventType.EXT_WRITE_ROWS, EventType.PRE_GA_WRITE_ROWS);
+        binlogParser.registerHandle(new DeleteHandle(filter), EventType.DELETE_ROWS, EventType.EXT_DELETE_ROWS, EventType.PRE_GA_DELETE_ROWS);
+        binlogParser.registerHandle(new UpdateHandle(filter), EventType.UPDATE_ROWS, EventType.EXT_UPDATE_ROWS, EventType.PRE_GA_UPDATE_ROWS);
         binlogParser.registerHandle(new TableMapHandle(dbInfoVo), EventType.TABLE_MAP);
     }
 
@@ -79,8 +79,7 @@ public class BinlogListenSql {
         binaryLogClient.setBinlogFilename(getFirstBinLogName());
 
         binaryLogClient.registerEventListener(event -> {
-            if (eventFilterVo.getStartTime() > event.getHeader().getTimestamp()) {
-                log.info(event.getHeader().getTimestamp() + "  " + eventFilterVo.getStartTime());
+            if (!filter.filter(event)) {
                 return;
             }
             binlogParser.handle(event);
@@ -98,8 +97,10 @@ public class BinlogListenSql {
 
     public void close() {
         try {
-            binaryLogClient.disconnect();
-            binaryLogClient = null;
+            if (binaryLogClient != null) {
+                binaryLogClient.disconnect();
+                binaryLogClient = null;
+            }
         } catch (IOException e) {
             log.error("关闭失败", e);
         }

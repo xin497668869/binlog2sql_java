@@ -2,7 +2,7 @@ package com.seewo.binlogsql.handler;
 
 import com.github.shyiko.mysql.binlog.event.Event;
 import com.github.shyiko.mysql.binlog.event.WriteRowsEventData;
-import com.seewo.binlogsql.vo.EventFilterVo;
+import com.seewo.binlogsql.Filter;
 import com.seewo.binlogsql.vo.RowVo;
 import com.seewo.binlogsql.vo.TableVo;
 
@@ -24,10 +24,10 @@ import static com.seewo.binlogsql.tool.TableTool.getTableInfo;
 
 public class InsertHandle implements BinlogEventHandle {
 
-    private final EventFilterVo eventFilterVo;
+    private final Filter filter;
 
-    public InsertHandle(EventFilterVo eventFilterVo) {
-        this.eventFilterVo = eventFilterVo;
+    public InsertHandle(Filter filter) {
+        this.filter = filter;
     }
 
     @Override
@@ -36,7 +36,7 @@ public class InsertHandle implements BinlogEventHandle {
 
         TableVo tableVoInfo = getTableInfo(writeRowsEventV2.getTableId());
 
-        if(!eventFilterVo.filter(tableVoInfo)) {
+        if(!filter.filter(tableVoInfo)) {
             return Collections.emptyList();
         }
 
